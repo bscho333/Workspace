@@ -1,4 +1,4 @@
-name: cu113
+name: test
 channels:
   - pytorch
   - defaults
@@ -271,7 +271,7 @@ dependencies:
       - sniffio==1.3.0
       - soupsieve==2.4.1
       # - spacy==3.7.0.dev0
-      # - spacy==3.7.0
+      - spacy==3.7.0
       - spacy-curated-transformers==0.2.0
       - spacy-legacy==3.0.12
       - spacy-loggers==1.0.4
