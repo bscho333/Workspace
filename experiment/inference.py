@@ -69,6 +69,7 @@ def eval_model(args):
     prompt_out = conv.get_prompt()
     input_ids = tokenizer_image_token(prompt_out, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).cuda()
 
+    # images, attention_masks, image_sizes = image_parser(args)
     images = image_parser(args)
     for image in images:
         image_tensor = process_images([image], image_processor, model.config)[0]
