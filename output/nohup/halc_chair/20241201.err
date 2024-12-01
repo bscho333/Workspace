@@ -1,0 +1,133 @@
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################
+# Run Time: 2024/12/01 08:01:15
+# Command: python ./Workspace/model/HALC/run_scripts/caption_generation.py --model llava --data_path /root/data/coco/val2014 --decoder vcd --num_samples 40504 --seed 42 --gpu-id 0 --output_dir ./generated_captions/ --debugger 1
+# Comment: VCD strategy -1
+########################################
+python: can't open file '/root/Workspace/./Workspace/model/HALC/run_scripts/caption_generation.py': [Errno 2] No such file or directory
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################
+# Run Time: 2024/12/01 08:02:17
+# Command: python ./model/HALC/run_scripts/caption_generation.py --model llava --data_path /root/data/coco/val2014 --decoder vcd --num_samples 40504 --seed 42 --gpu-id 0 --output_dir ./generated_captions/ --debugger 1
+# Comment: VCD strategy -1
+########################################
+Traceback (most recent call last):
+  File "/root/Workspace/./model/HALC/run_scripts/caption_generation.py", line 14, in <module>
+    from minigpt4.models import load_preprocess
+ModuleNotFoundError: No module named 'minigpt4'
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################
+# Run Time: 2024/12/01 08:04:11
+# Command: python ./model/HALC/run_scripts/caption_generation.py --model llava --data_path /root/data/coco/val2014 --decoder vcd --num_samples 40504 --seed 42 --gpu-id 0 --output_dir ./generated_captions/ --debugger 1
+# Comment: VCD strategy -2
+########################################
+Traceback (most recent call last):
+  File "/root/Workspace/./model/HALC/run_scripts/caption_generation.py", line 15, in <module>
+    from minigpt4.models import load_preprocess
+  File "/root/Workspace/model/HALC/minigpt4/__init__.py", line 15, in <module>
+    from minigpt4.datasets.builders import *
+  File "/root/Workspace/model/HALC/minigpt4/datasets/builders/__init__.py", line 8, in <module>
+    from minigpt4.datasets.builders.base_dataset_builder import load_dataset_config
+  File "/root/Workspace/model/HALC/minigpt4/datasets/builders/base_dataset_builder.py", line 21, in <module>
+    from minigpt4.processors.base_processor import BaseProcessor
+  File "/root/Workspace/model/HALC/minigpt4/processors/__init__.py", line 9, in <module>
+    from minigpt4.processors.blip_processors import (
+  File "/root/Workspace/model/HALC/minigpt4/processors/blip_processors.py", line 12, in <module>
+    from minigpt4.processors.randaugment import RandomAugment
+  File "/root/Workspace/model/HALC/minigpt4/processors/randaugment.py", line 8, in <module>
+    import cv2
+  File "/root/miniconda3/envs/halc/lib/python3.9/site-packages/cv2/__init__.py", line 181, in <module>
+    bootstrap()
+  File "/root/miniconda3/envs/halc/lib/python3.9/site-packages/cv2/__init__.py", line 153, in bootstrap
+    native_module = importlib.import_module("cv2")
+  File "/root/miniconda3/envs/halc/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+ImportError: libGL.so.1: cannot open shared object file: No such file or directory
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################
+# Run Time: 2024/12/01 08:05:26
+# Command: python ./model/HALC/run_scripts/caption_generation.py --model llava --data_path /root/data/coco/val2014 --decoder vcd --num_samples 40504 --seed 42 --gpu-id 0 --output_dir ./generated_captions/ --debugger 1
+# Comment: VCD strategy -3 libGL install
+########################################
+Traceback (most recent call last):
+  File "/root/Workspace/./model/HALC/run_scripts/caption_generation.py", line 196, in <module>
+    args.cfg_path = MODEL_EVAL_CONFIG_PATH[args.model]
+KeyError: 'llava'
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################
+# Run Time: 2024/12/01 08:07:05
+# Command: python ./model/HALC/run_scripts/caption_generation.py --model llava-1.5 --data_path /root/data/coco/val2014 --decoder vcd --num_samples 40504 --seed 42 --gpu-id 0 --output_dir ./generated_captions/ --debugger 1
+# Comment: VCD strategy -4 model name = llava-1.5
+########################################
+Traceback (most recent call last):
+  File "/root/Workspace/./model/HALC/run_scripts/caption_generation.py", line 197, in <module>
+    cfg = Config(args)
+  File "/root/Workspace/model/HALC/minigpt4/common/config.py", line 27, in __init__
+    config = OmegaConf.load(self.args.cfg_path)
+  File "/root/miniconda3/envs/halc/lib/python3.9/site-packages/omegaconf/omegaconf.py", line 189, in load
+    with io.open(os.path.abspath(file_), "r", encoding="utf-8") as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/root/Workspace/eval_configs/llava-1.5_eval.yaml'
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################
+# Run Time: 2024/12/01 08:10:08
+# Command: python ./model/HALC/run_scripts/caption_generation.py --model llava-1.5 --data_path /root/data/coco/val2014 --decoder vcd --num_samples 40504 --seed 42 --gpu-id 0 --output_dir ./generated_captions/ --debugger 1
+# Comment: VCD strategy -5 cfg_path fix
+########################################
+You are using a model of type llava to instantiate a model of type llava-1.5. This is not supported for all configurations of models and can yield errors.
+Loading checkpoint shards:   0%|                                                                                                                      | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|███████████████████████████████████████████████████████                                                       | 1/2 [00:04<00:04,  4.14s/it]Loading checkpoint shards: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:05<00:00,  2.64s/it]Loading checkpoint shards: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:05<00:00,  2.87s/it]
+Traceback (most recent call last):
+  File "/root/Workspace/./model/HALC/run_scripts/caption_generation.py", line 327, in <module>
+    with open(annotation_file_path, "r") as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/root/data/coco/val2014annotations/instances_val2014.json'
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################
+# Run Time: 2024/12/01 08:10:58
+# Command: python ./model/HALC/run_scripts/caption_generation.py --model llava-1.5 --data_path /root/data/coco/val2014/ --decoder vcd --num_samples 40504 --seed 42 --gpu-id 0 --output_dir ./generated_captions/ --debugger 1
+# Comment: VCD strategy -6 data_path fix
+########################################
+You are using a model of type llava to instantiate a model of type llava-1.5. This is not supported for all configurations of models and can yield errors.
+Loading checkpoint shards:   0%|                             | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|██████████▌          | 1/2 [00:06<00:06,  6.31s/it]Loading checkpoint shards: 100%|█████████████████████| 2/2 [00:08<00:00,  3.81s/it]Loading checkpoint shards: 100%|█████████████████████| 2/2 [00:08<00:00,  4.18s/it]
+Traceback (most recent call last):
+  File "/root/Workspace/./model/HALC/run_scripts/caption_generation.py", line 407, in <module>
+    halc_assistant_helper = halc_assistant(
+  File "/root/Workspace/model/HALC/decoder_zoo/HALC/context_density/halc.py", line 53, in __init__
+    self.detector = Detector(model_args, self.debugger)
+  File "/root/Workspace/model/HALC/decoder_zoo/HALC/context_density/detector.py", line 124, in __init__
+    self.model = load_model(
+  File "/root/Workspace/model/HALC/decoder_zoo/GroundingDINO/groundingdino/util/inference.py", line 31, in load_model
+    args = SLConfig.fromfile(model_config_path)
+  File "/root/Workspace/model/HALC/decoder_zoo/GroundingDINO/groundingdino/util/slconfig.py", line 185, in fromfile
+    cfg_dict, cfg_text = SLConfig._file2dict(filename)
+  File "/root/Workspace/model/HALC/decoder_zoo/GroundingDINO/groundingdino/util/slconfig.py", line 79, in _file2dict
+    check_file_exist(filename)
+  File "/root/Workspace/model/HALC/decoder_zoo/GroundingDINO/groundingdino/util/slconfig.py", line 23, in check_file_exist
+    raise FileNotFoundError(msg_tmpl.format(filename))
+FileNotFoundError: file "/root/Workspace/decoder_zoo/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py" does not exist

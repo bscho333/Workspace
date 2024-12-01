@@ -2,8 +2,9 @@ import argparse
 import os
 import random
 import sys
-sys.path.append("mPLUG-Owl/mPLUG-Owl2")
+sys.path.append("/root/Workspace/model/HALC/mPLUG-Owl/mPLUG-Owl2")
 sys.path.append("./")
+sys.path.append("/root/Workspace/model/HALC")
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -103,7 +104,7 @@ parser.add_argument(
 parser.add_argument(
     "--data_path",
     type=str,
-    default="eval_dataset/val2014/",
+    default="/root/data/coco/val2014/",
     help="data path",
 )
 parser.add_argument("--batch_size", type=int, default=1, help="batch size")
