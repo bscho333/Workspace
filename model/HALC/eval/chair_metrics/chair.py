@@ -3,7 +3,7 @@ import sys
 from nltk.stem import *
 import nltk
 import json
-from pattern.en import singularize
+from pattern3.en import singularize
 import argparse
 from .misc import *
 

@@ -30,17 +30,17 @@ parser = argparse.ArgumentParser(description="POPE-Adv evaluation on LVLMs.")
 
 parser.add_argument(
     "-c",
-    "--caption-path",
+    "--caption_path",
     type=str,
     required=True,
     help="Path to the generated captions",
 )
 parser.add_argument(
     "-d",
-    "--caption-path",
+    "--coco_path",
     type=str,
     required=False,
-    default="/home/czr/dataset/val2014/annotations/captions_val2014.json",
+    default="/root/data/coco/annotations/captions_val2014.json",
     help="Path to the COCO ground-truth caption",
 )
 
@@ -66,10 +66,10 @@ caption_files = [file for file in files if file.endswith("_generated_captions.js
 #     "/media/zhuokai/SN850X_4TB/Data/coco/annotations_all/captions_val2014.json"
 # )
 caption_file_path = (
-    caption_path
+    args.coco_path
 )
 annotation_file_path = (
-    caption_path
+    args.coco_path
 )
 # with open(args.data_path + '../annotations_trainval2014/annotations/instances_val2014.json', 'r') as f:
 with open(annotation_file_path, "r") as f:
