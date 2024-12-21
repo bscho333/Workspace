@@ -123,7 +123,7 @@ norm = transforms.Normalize(mean, std)
 img_files = os.listdir(args.data_path)
 random.shuffle(img_files)
 
-with open(args.data_path + '../annotations_trainval2014/annotations/instances_val2014.json', 'r') as f:
+with open(args.data_path + 'annotations/instances_val2014.json', 'r') as f:
     lines = f.readlines()
 coco_anns = json.loads(lines[0])
 

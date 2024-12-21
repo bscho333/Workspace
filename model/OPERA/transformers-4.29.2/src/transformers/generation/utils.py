@@ -3314,8 +3314,14 @@ class GenerationMixin:
         history_length = window_size
         reject_token_pos_gather = [[] for _ in range(window_size)]
         model_kwargs_ori = model_kwargs.copy()
+        while_number = 0
+        print("before while loop, input_ids.shape: ", input_ids.shape)
 
         while True:
+            try:
+                print(f"while_number: {while_number}, input_ids.shape: {input_ids.shape}, cur_len: {cur_len}, attn_previous: {attn_previous.shape}, outputs.attentions[-1].shape: {outputs.attentions[-1].shape}")
+            except:
+                print(f"while_number: {while_number}, input_ids.shape: {input_ids.shape}, cur_len: {cur_len}")
             if synced_gpus:
                 # Under synced_gpus the `forward` call must continue until all gpus complete their sequence.
                 # The following logic allows an early break if all peers finished generating their sequence
@@ -3343,6 +3349,8 @@ class GenerationMixin:
                 output_attentions=output_attentions,
                 output_hidden_states=output_hidden_states,
             )
+            
+            # import pdb; pdb.set_trace()
 
             # Load the previous self-attention weights
             if not "past_key_values" in model_kwargs.keys():
@@ -3350,8 +3358,30 @@ class GenerationMixin:
             else:
                 assert beam_idx is not None and attn_previous is not None
                 attn_previous = torch.cat([attn_previous, torch.zeros_like(attn_previous).sum(-1, keepdim=True)], -1)
+                print(f"cur_len: {cur_len}, input_ids.shape: {input_ids.shape}, attn_previous shape: {attn_previous.shape}, outputs.attentions[-1].shape: {outputs.attentions[-1].shape}")
                 attn_previous = torch.cat(
                     [attn_previous[beam_idx], outputs.attentions[-1].clone().max(1, keepdim=True).values.data], -2) # [batch_size * num_beams, num_head, q, kv]
+
+            # try:
+            #     # Load the previous self-attention weights
+            #     if not "past_key_values" in model_kwargs.keys():
+            #         attn_previous = outputs.attentions[-1].clone() # [batch_size * num_beams, num_head, q, kv]
+            #     else:
+            #         assert beam_idx is not None and attn_previous is not None
+            #         attn_previous = torch.cat([attn_previous, torch.zeros_like(attn_previous).sum(-1, keepdim=True)], -1)
+            #         attn_previous = torch.cat(
+            #             [attn_previous[beam_idx], outputs.attentions[-1].clone().max(1, keepdim=True).values.data], -2) # [batch_size * num_beams, num_head, q, kv]
+            # except:
+            #     import pdb; pdb.set_trace()
+            #         # Load the previous self-attention weights
+            #     if not "past_key_values" in model_kwargs.keys():
+            #         attn_previous = outputs.attentions[-1].clone() # [batch_size * num_beams, num_head, q, kv]
+            #     else:
+            #         assert beam_idx is not None and attn_previous is not None
+            #         attn_previous = torch.cat([attn_previous, torch.zeros_like(attn_previous).sum(-1, keepdim=True)], -1)
+            #         attn_previous = torch.cat(
+            #             [attn_previous[beam_idx], outputs.attentions[-1].clone().max(1, keepdim=True).values.data], -2) # [batch_size * num_beams, num_head, q, kv]
+
             
             attn_previous = attn_previous.max(1, keepdim=True).values.data # [batch_size * num_beams, 1, q, kv]
             current_state["attn_previous"] = attn_previous.data.cpu()
@@ -3455,106 +3485,128 @@ class GenerationMixin:
             history_states.append(current_state)
 
             # check if we need rollback
-            try:
-                if all((rollback_loc_gather == rollback_loc).long().sum() > int(threshold) for _, rollback_loc_gather in enumerate(rollback_loc_gathers)):
-                    if rollback_loc < 10: # or rollback_loc + 1 < rollback_pos:
-                        assert False
-                    # locate the rollback position
-                    rollback_pos = rollback_loc + 1
+            
+            if all((rollback_loc_gather == rollback_loc).long().sum() > int(threshold) for _, rollback_loc_gather in enumerate(rollback_loc_gathers)):
+                print('#'*50)
+                print("ROLLBACK STARTS")
+                print('#'*50)
+                if rollback_loc < 10: # or rollback_loc + 1 < rollback_pos:
+                    assert False
+                # locate the rollback position
+                rollback_pos = rollback_loc + 1
+                if max_rollback_time[rollback_pos] >= num_attn_candidates:
+                    # print(f"Already reach the maximum rollback times at position {rollback_pos}, so shift the rollback position to {rollback_pos-1}")
+                    rollback_pos = rollback_pos - 1
                     if max_rollback_time[rollback_pos] >= num_attn_candidates:
-                        # print(f"Already reach the maximum rollback times at position {rollback_pos}, so shift the rollback position to {rollback_pos-1}")
-                        rollback_pos = rollback_pos - 1
-                        if max_rollback_time[rollback_pos] >= num_attn_candidates:
-                            assert False
-                        else:
-                            max_rollback_time[rollback_pos] += 1
+                        assert False
                     else:
                         max_rollback_time[rollback_pos] += 1
-                    if cur_response_lens - rollback_pos > history_length + 1:
-                        rollback_pos = max(1, cur_response_lens - history_length - 1)
-                    # print(f"rollback from pos {cur_response_lens-1} to pos {rollback_pos} for the time {int(max_rollback_time[rollback_pos])}")
+                else:
+                    max_rollback_time[rollback_pos] += 1
+                if cur_response_lens - rollback_pos > history_length + 1:
+                    rollback_pos = max(1, cur_response_lens - history_length - 1)
+                # print(f"rollback from pos {cur_response_lens-1} to pos {rollback_pos} for the time {int(max_rollback_time[rollback_pos])}")
 
-                    # discard the rollbacked states in history
-                    for j in range(cur_response_lens-rollback_pos-2):
-                        history_states.pop(-1)
-                        history_rollback_locs.pop(-1)
-                        reject_token_pos_gather[-(j+1)] = []
-
-                    # Revive all of variables in the state of the rollback position
-                    input_ids = history_states[-2]["input_ids"]
-                    beam_scorer = history_states[-2]["beam_scorer"]
-                    beam_indices = history_states[-2]["beam_indices"]
-                    cur_len = history_states[-2]["cur_len"]
-
-                    attn_previous = history_states[-2]["attn_previous"].to(input_ids.device)
-                    candidate_token_scores = history_states[-2]["candidate_token_scores"]
-                    candidate_tokens = history_states[-2]["candidate_tokens"]
-
-                    beam_scores = history_states[-2]["beam_scores"]
-                    beam_next_tokens = history_states[-1]["beam_next_tokens"]
-                    beam_idx = history_states[-1]["beam_idx"]
-
-                    # first inference to get model kwargs
-                    if "images" in model_kwargs_ori.keys():
-                        model_kwargs = model_kwargs_ori.copy()
-                        model_kwargs["attention_mask"] = torch.cat([
-                            model_kwargs["attention_mask"], torch.ones((
-                                input_ids.shape[0], input_ids[:,:-1].shape[1] - model_kwargs["attention_mask"].shape[1]
-                            )).to(input_ids.device)], 1)
-
-                        model_inputs_tmp = self.prepare_inputs_for_generation(input_ids[:,:-1], **model_kwargs)
-                    else:
-                        answer_embeds = self.model.embed_tokens(input_ids[:,1:-1])
-                        model_kwargs = model_kwargs_ori.copy()
-                        model_kwargs["inputs_embeds"] = torch.cat([model_kwargs["inputs_embeds"], answer_embeds], 1)
-                        model_kwargs["attention_mask"] = torch.cat(
-                            [model_kwargs["attention_mask"], torch.ones_like(input_ids[:,1:-1]).to(input_ids.device)], 1)
-
-                        model_inputs_tmp = self.prepare_inputs_for_generation(input_ids[:,1:-1], **model_kwargs)
-
-                    outputs_tmp = self(
-                        **model_inputs_tmp,
-                        return_dict=True,
-                        output_attentions=output_attentions,
-                        output_hidden_states=output_hidden_states,
-                    )
-                    model_kwargs = self._update_model_kwargs_for_generation(
-                        outputs_tmp, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
-                    )
-
-                    # another inference to get outputs and logits
-                    model_inputs_tmp = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
-
-                    outputs = self(
-                        **model_inputs_tmp,
-                        return_dict=True,
-                        output_attentions=output_attentions,
-                        output_hidden_states=output_hidden_states,
-                    )
-                    next_token_logits = outputs.logits[:, -1, :]
-                    del outputs_tmp, model_inputs_tmp
-
-                    # discard the last rollbacked state in history
+                # discard the rollbacked states in history
+                for j in range(cur_response_lens-rollback_pos-2):
                     history_states.pop(-1)
                     history_rollback_locs.pop(-1)
-                    reject_token_pos_gather[rollback_pos+1] = []
+                    reject_token_pos_gather[-(j+1)] = []
 
-                    # set penalty on the corresponding candidates
-                    next_token_logits -= 999. + next_token_logits.min(-1, keepdim=True).values.data
-                    next_token_logits = next_token_logits.view(batch_size, num_beams * vocab_size)
-                    beam_idx = beam_idx.view(batch_size, num_beams)
-                    beam_next_tokens = beam_next_tokens.view(batch_size, num_beams)
-                    reject_token_pos = beam_idx * vocab_size + beam_next_tokens
-                    if len(reject_token_pos_gather[rollback_pos]) > 0:
-                        reject_token_pos = torch.cat([reject_token_pos_gather[rollback_pos], reject_token_pos], -1)
-                    reject_token_pos_gather[rollback_pos] = reject_token_pos
-                    next_token_logits = next_token_logits.scatter_(-1, reject_token_pos, -999.)
-                    next_token_logits = next_token_logits.view(batch_size * num_beams, vocab_size)
+                print('#'*50)
+                print("omg it's really rollbacking")
+                print('#'*50)
+
+                # Revive all of variables in the state of the rollback position
+                input_ids = history_states[-2]["input_ids"]
+                beam_scorer = history_states[-2]["beam_scorer"]
+                beam_indices = history_states[-2]["beam_indices"]
+                cur_len = history_states[-2]["cur_len"]
+
+                attn_previous = history_states[-2]["attn_previous"].to(input_ids.device)
+                candidate_token_scores = history_states[-2]["candidate_token_scores"]
+                candidate_tokens = history_states[-2]["candidate_tokens"]
+
+                beam_scores = history_states[-2]["beam_scores"]
+                beam_next_tokens = history_states[-1]["beam_next_tokens"]
+                beam_idx = history_states[-1]["beam_idx"]
+                print(f"rollbacking to pos {rollback_pos}, input_ids.shape: {input_ids.shape}, cur_len: {cur_len}, attn_previous.shape: {attn_previous.shape}, outputs.attentions[-1].shape: {outputs.attentions[-1].shape}")
+
+
+                # first inference to get model kwargs
+                if "images" in model_kwargs_ori.keys():
+                    print("if start")
+                    model_kwargs = model_kwargs_ori.copy()
+                    model_kwargs["attention_mask"] = torch.cat([
+                        model_kwargs["attention_mask"], torch.ones((
+                            input_ids.shape[0], input_ids[:,:-1].shape[1] - model_kwargs["attention_mask"].shape[1]
+                        )).to(input_ids.device)], 1)
+
+                    model_inputs_tmp = self.prepare_inputs_for_generation(input_ids[:,:-1], **model_kwargs)
+                    print("if end")
                 else:
-                    assert False
-            except:
+                    print("else start")
+                    answer_embeds = self.model.embed_tokens(input_ids[:,1:-1])
+                    model_kwargs = model_kwargs_ori.copy()
+                    model_kwargs["inputs_embeds"] = torch.cat([model_kwargs["inputs_embeds"], answer_embeds], 1)
+                    model_kwargs["attention_mask"] = torch.cat(
+                        [model_kwargs["attention_mask"], torch.ones_like(input_ids[:,1:-1]).to(input_ids.device)], 1)
+
+                    model_inputs_tmp = self.prepare_inputs_for_generation(input_ids[:,1:-1], **model_kwargs)
+                    print("else end")
+
+                print("tmp generate start")
+                outputs_tmp = self(
+                    **model_inputs_tmp,
+                    return_dict=True,
+                    output_attentions=output_attentions,
+                    output_hidden_states=output_hidden_states,
+                )
+                print("tmp generate end")
+                model_kwargs = self._update_model_kwargs_for_generation(
+                    outputs_tmp, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
+                )
+                print("model_kwargs updated")
+
+                # another inference to get outputs and logits
+                model_inputs_tmp = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
+                print("REAL generate start")
+
+                outputs = self(
+                    **model_inputs_tmp,
+                    return_dict=True,
+                    output_attentions=output_attentions,
+                    output_hidden_states=output_hidden_states,
+                )
+                print("REAL generate end")
+                next_token_logits = outputs.logits[:, -1, :]
+                del outputs_tmp, model_inputs_tmp
+
+                # discard the last rollbacked state in history
+                history_states.pop(-1)
+                history_rollback_locs.pop(-1)
+                reject_token_pos_gather[rollback_pos+1] = []
+
+                # set penalty on the corresponding candidates
+                next_token_logits -= 999. + next_token_logits.min(-1, keepdim=True).values.data
+                next_token_logits = next_token_logits.view(batch_size, num_beams * vocab_size)
+                beam_idx = beam_idx.view(batch_size, num_beams)
+                beam_next_tokens = beam_next_tokens.view(batch_size, num_beams)
+                reject_token_pos = beam_idx * vocab_size + beam_next_tokens
+                if len(reject_token_pos_gather[rollback_pos]) > 0:
+                    reject_token_pos = torch.cat([reject_token_pos_gather[rollback_pos], reject_token_pos], -1)
+                reject_token_pos_gather[rollback_pos] = reject_token_pos
+                next_token_logits = next_token_logits.scatter_(-1, reject_token_pos, -999.)
+                next_token_logits = next_token_logits.view(batch_size * num_beams, vocab_size)
+            else:
+                print("in try, no rollback")
+                # assert False
+                # print(f"rollbacked to pos {rollback_pos}, input_ids.shape: {input_ids.shape}, cur_len: {cur_len}, attn_previous.shape: {attn_previous.shape}, outputs.attentions[-1].shape: {outputs.attentions[-1].shape}")
+            # except:
+                # print(f"no rollback")
                 next_token_logits.fill_(-999.)
                 next_token_logits = next_token_logits.scatter_(-1, candidate_tokens, candidate_token_scores)
+                print(f"no rollback, input_ids.shape: {input_ids.shape}, cur_len: {cur_len}, attn_previous.shape: {attn_previous.shape}, outputs.attentions[-1].shape: {outputs.attentions[-1].shape}")
 
             del attn_last, attn_local, attn_local_scores
             # hack: adjust tokens for Marian. For Marian we have to make sure that the `pad_token_id`
@@ -3613,8 +3665,10 @@ class GenerationMixin:
             beam_idx = beam_outputs["next_beam_indices"]
 
             cur_response_lens = input_ids.shape[-1]
+            print(f"beam_idx={beam_idx}, input_ids.shape={input_ids.shape}, cur_len={cur_len}, cur_response_lens={cur_response_lens}, attn_previous.shape={attn_previous.shape}, outputs.attentions[-1].shape={outputs.attentions[-1].shape}")
 
             input_ids = torch.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
+            print(f"input_ids.shape: {input_ids.shape}")
 
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
@@ -3633,6 +3687,9 @@ class GenerationMixin:
                     break
                 else:
                     this_peer_finished = True
+
+            print(f"while_number: {while_number}, input_ids.shape: {input_ids.shape}, cur_len: {cur_len}, attn_previous: {attn_previous.shape}, outputs.attentions[-1].shape: {outputs.attentions[-1].shape}")
+            while_number += 1
 
         sequence_outputs = beam_scorer.finalize(
             input_ids,
